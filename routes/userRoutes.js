@@ -74,7 +74,52 @@ router.post('/login', async (req, res) => {
         //return token as response
         res.json({ token })
     } catch (err) {
-        
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+//profile route
+router.get('/profile', jwtAuthMiddleware, async (req, res) => {
+    try {
+        const userData = req.user;
+        const userID = userData.id;
+        const user = await User.findById(userID);
+        res.status(200).json({ user });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: ' Internal server Error' });
+    }
+});
+
+router.put('/profile/password', jwtAuthMiddleware, async (req, res) => {
+    try {
+        const userID = req.user.id; //Extract the id from the token
+        const { currentPassword, newPassword } = req.body; // Extract current and new passwords from request body
+
+        //check if currentPassword and new Password are present in the request body
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: ' both current password and new password are required' });
+        }
+
+        //find the user by user ID
+        const user = await User.findById(userID);
+
+        // if user does not exist or password does not match , return error
+        if (!user || !(await user.comparePassword(currentPassword))) {
+            return res.status(401).json({ error: ' invalid current password' });
+        }
         
-    })
+        //update the user's password
+        user.password = newPassword;
+        await user.save();
+
+        console.log('password updated');
+        res.status(200).json({ message: 'password updated' })
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'internal server error' });
+    }
+});
+
+module.exports = router;
